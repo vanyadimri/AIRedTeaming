@@ -19,13 +19,15 @@ human_prompts = []
 for dict in data:
         transcript = dict['transcript']
         human_responses = re.findall(r'Human: (.*?)(?:\r?\n|$)', transcript)
-        human_prompts.append(human_responses)
+        human_prompts.append(human_responses[0])
 
+print("\n\n".join(human_prompts[5:10]))
 # human_prompts is a list of lists
 # each item in human_prompts is a list of all the prompt given by the human in a single transcript
 
 # if we need the data as a single list:
 import itertools
 
-single_list = list(itertools.chain(*human_prompts))
-print(single_list[0])
+#single_list = list(itertools.chain(*human_prompts))
+#print(single_list[:5])
+
