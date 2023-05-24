@@ -19,9 +19,6 @@ def main():
   max_tokens=7,
   temperature=0
   )
-
-
-
   completion = openai.Completion.create(
   model="text-davinci-003",
   messages=[
@@ -71,8 +68,6 @@ def main():
   pred, response = call_request(adverse_prompt, model="davinci", tokenizer=AutoTokenizer.from_pretrained("gpt2"))
   print(response)
   print(type(response))
-
-
 
 def call_request(prompt, model, tokenizer, max_new_tokens=15):
     max_inpt_tokens = tokenizer.model_max_length
