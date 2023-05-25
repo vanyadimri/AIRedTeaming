@@ -12,7 +12,12 @@ import datetime
 import multiprocessing as mp
 from transformers import AutoTokenizer
 
+# is this okay to put here ???
+with open(file= "../key.txt") as f:
+        openai.api_key = f.read()
+
 def process_data(constitutions, human_prompts, tokenizer, score_results):
+    
     # Process the data for each constitution prompt
     # Your existing code from the loop goes here
     our_const = constitutions[random.randint(0, 9)]
@@ -50,8 +55,6 @@ def process_data(constitutions, human_prompts, tokenizer, score_results):
 
 def main():
     # Your existing code before the loop goes here
-    with open(file= "../key.txt") as f:
-        openai.api_key = f.read()
 
     # Data Parsing
     # Open the JSON file
@@ -100,7 +103,7 @@ def main():
     pool = mp.Pool(num_processes)
 
     # Prepare the arguments for parallel processing
-    arguments = [(constitutions, human_prompts, tokenizer, score_results) for _ in range(1)]
+    arguments = [(constitutions, human_prompts, tokenizer, score_results) for _ in range()]
 
     # Apply parallel processing to process_data function
     results = pool.starmap(process_data, arguments)
