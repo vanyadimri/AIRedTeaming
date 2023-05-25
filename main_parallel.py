@@ -103,7 +103,7 @@ def main():
     pool = mp.Pool(num_processes)
 
     # Prepare the arguments for parallel processing
-    arguments = [(constitutions, human_prompts, tokenizer, score_results) for _ in range()]
+    arguments = [(constitutions, human_prompts, tokenizer, score_results) for _ in range(10)]
 
     # Apply parallel processing to process_data function
     results = pool.starmap(process_data, arguments)
