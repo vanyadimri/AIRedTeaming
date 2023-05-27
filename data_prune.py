@@ -11,7 +11,6 @@ from collections import defaultdict
 import datetime
 import multiprocessing as mp
 from transformers import AutoTokenizer
-import csv
 
 # is this okay to put here ???
 with open(file= "../key.txt") as f:
@@ -59,8 +58,8 @@ def main():
 
     # Data Parsing
     # Open the JSON file
-    with open('pruned_data.csv', 'r') as file:
-        reader = csv.reader(file)
+    with open('red_team_attempts.jsonl') as f:
+        data = json.load(f)
 
     # Access the data
 
@@ -73,8 +72,10 @@ def main():
 
     human_prompts = []
 
-    for row in reader:
-            human_prompts.append(reader[0])
+    for dict in data:
+            transcript = dict['transcript']
+            human_responses = re.findall(r'Human: (.*?)(?:\r?\n|$)', transcript)
+            human_prompts.append(human_responses[0])
 
     #print("\n\n".join(human_prompts[5:10]))
 
@@ -120,8 +121,9 @@ def main():
     # Convert the aggregated results to a DataFrame and save to a CSV file
     df = pd.DataFrame(all_score_results)
     df.sort_values('score', ascending=False, inplace=True)
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    df.to_csv(f'results_{timestamp}.csv', index=False)
+    
+    #timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    df.to_csv(f'pruned_data', index=False)
 
 def call_request(prompt, model, tokenizer, max_new_tokens=15):
     max_inpt_tokens = tokenizer.model_max_length
