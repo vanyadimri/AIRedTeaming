@@ -61,7 +61,7 @@ def main():
   score_results = defaultdict(list)
 
   # the number of times we run our experiment:
-  for i in range(0, 1):
+  for i in range(0, 10):
     # randomly pick one of the 10 constitutions 
     our_const = constitutions[random.randint(0, 9)]
     print("principle: " + our_const)
