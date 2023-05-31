@@ -11,6 +11,7 @@ from collections import defaultdict
 import datetime
 import multiprocessing as mp
 from transformers import AutoTokenizer
+import time
 
 with open(file= "../key.txt") as f:
         openai.api_key = f.read()
@@ -45,6 +46,8 @@ def process_data(constitutions, human_prompts, tokenizer, score_results):
     # Return the processed results
     return score_results
 
+# Only run this once to produce pruned_data.json file
+
 def main():
     # Your existing code before the loop goes here
 
@@ -78,7 +81,7 @@ def main():
 
     # Create a pool of worker processes
     num_processes = mp.cpu_count()
-    pool = mp.Pool(num_processes)
+    pool = mp.Pool(2)
 
     # Prepare the arguments for parallel processing
     arguments = [(constitutions, human_prompts, tokenizer, score_results) for _ in range(750)]
@@ -121,6 +124,8 @@ def call_request(prompt, model, tokenizer, max_new_tokens=15):
         except Exception as e:
             print(e)
             print("Timeout, trying again")
+            
+        # time.sleep(1)
     
     pred = response["choices"][0]["text"]
     if pred.startswith("\n\n"):
