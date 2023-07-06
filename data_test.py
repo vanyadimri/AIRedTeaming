@@ -15,13 +15,19 @@ with open('red_team_attempts.jsonl') as f:
 #print(type(data[0]['transcript']))
 
 human_prompts = []
+task_descriptions = set()
 
 for dict in data:
         transcript = dict['transcript']
         human_responses = re.findall(r'Human: (.*?)(?:\r?\n|$)', transcript)
         human_prompts.append(human_responses[0])
 
-print("\n\n".join(human_prompts[5:10]))
+        task_descriptions.add(dict['task_description'])
+
+
+print(task_descriptions)
+# print("\n\n".join(human_prompts[5:10]))
+
 # human_prompts is a list of lists
 # each item in human_prompts is a list of all the prompt given by the human in a single transcript
 
