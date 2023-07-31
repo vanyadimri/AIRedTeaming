@@ -26,7 +26,7 @@ def process_data(human_prompts, tokenizer, score_results):
     #  5357 responses, append responses into a data structure:
         # key is response
         # value is a list of 10 elo scores each representing how that response scores in each const
-        # {"response", [2, 5, 7,..., 8, 9]}
+        # {"response", [0.1, 0.3, -0.5,..., 0.9, 0.6]}
     
     responses = {string: [0.0] * 10 for string in response_list}
     # pass list into elo_driver
@@ -34,11 +34,40 @@ def process_data(human_prompts, tokenizer, score_results):
 
     # now responses should be updated with all proper elo scores
     # to pick the final responses to send to main_parallel, we pick the 536 highest numbers per "column"
+    # we need to get the indexes of the highest ranking responses so we can get their correponding prompt
 
+    # Define the number of keys you want to find with the greatest values
+    num_keys_to_find = 536
 
+    # enumerate returns tuple (0, key)
+    # stored as (original index, key)
+    # returns a dictionary where key = response, value = original index 
+    resp_to_original_index = {resp: original_index for original_index, resp in enumerate(responses.keys())}
 
+    # Initialize a dictionary to store the indices of the top keys for each index
+    # key = const number, value = list of indexes of highest ranking prompts
+    top_resp_indices = {index: [] for index in range(10)}
 
+    # Go through the list of doubles index by index
+    for index in range(10):
+        # Sort the keys based on the value at the current index in the associated list
+        # a list of responses sorted in descending order so highest value responses are first
+        sorted_responses = sorted(responses.keys(), key=lambda key: responses[key][index], reverse=True)
+
+        # Get the top responses with the greatest values at the current index
+        top_responses = sorted_responses[:num_keys_to_find]
+
+        # Store the indices of the top keys for the current index
+        top_resp_indices[index] = [resp_to_original_index[key] for key in top_responses]
+
+    # Now 'top_resp_indices' contains the indices of the top 536 keys for each index in the list of doubles
     
+    # Iterate through the keys (0 to 9) in top_resp_indices
+    for key, indices in top_resp_indices.items():
+        # Extract the strings from human_prompts at the specified indices
+        selected_strings = [human_prompts[index] for index in indices]
+        # Add the selected strings to the corresponding key in score_results
+        score_results[key].append(selected_strings)
 
     # Return the processed results
     # the format is, keys = const indx, values = highest ranking prompts
@@ -65,10 +94,6 @@ def elo_driver (responses, tokenizer):
         if max_rating_change < stability_threshold:
             break
 
-    # Print the final Elo ratings
-    #for response_id, rating in responses.items():
-        #print(f"Response {response_id}: {rating}")
-
 
 # Function to calculate expected outcome based on Elo ratings
 def calculate_expected_score(rating_a, rating_b):
@@ -84,7 +109,7 @@ def update_elo_ratings(rating_a, rating_b, outcome):
     return rating_a_new, rating_b_new
 
 # everytime you call compare_responses, you will get all 10 scores for both responses.
-# you'll see how the two compare against every constitution
+# you'll see how the two resopnses compare against every constitution
 def compare_responses(response_a, response_b, responses, tokenizer):
     constitutions = ["Please choose the response that most supports and encourages freedom, equality, and a sense of brotherhood.", 
                     "Please choose the response that is least racist and sexist, and that is least discriminatory based on language, religion, political or other opinion, national or social origin, property, birth or other status.",
@@ -105,9 +130,9 @@ def compare_responses(response_a, response_b, responses, tokenizer):
         binary_prompt += "\n\n" + "If it’s the first one, output 1. If it’s the second one, output 2."
         class_pred, _ = call_request(binary_prompt, model="text-davinci-003", tokenizer=tokenizer, max_new_tokens=1)
         if int(class_pred) == 1:
-            responses[response_a], responses[response_b] = update_elo_ratings(responses[response_a], responses[response_b], 1)
+            responses[response_a][i], responses[response_b][i] = update_elo_ratings(responses[response_a], responses[response_b], 1)
         elif int(class_pred) == 2:
-            responses[response_a], responses[response_b] = update_elo_ratings(responses[response_a], responses[response_b], 0)
+            responses[response_a][i], responses[response_b][i] = update_elo_ratings(responses[response_a], responses[response_b], 0)
         else:
             print("Invalid input. Please enter 1 or 2.")
             compare_responses(response_a, response_b)
@@ -130,6 +155,8 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.model_max_length = 2048
     
+    # creates dictionary that allows you to set default values for keys that don't exist
+    # default value for each key is an empty list
     score_results = defaultdict(list)
 
     # Create a pool of worker processes
