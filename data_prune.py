@@ -40,7 +40,7 @@ def elo_driver (responses, tokenizer):
             pool = mp.Pool(2)
 
             # Prepare the arguments for parallel processing CHANGE NUMBER HERE
-            arguments = [(response_a, response_b, responses, tokenizer) for _ in range(750)]
+            arguments = [(response_a, response_b, responses, tokenizer) for _ in range(1)]
 
             # Apply parallel processing to process_data function
             result = pool.starmap(compare_responses, arguments)
@@ -121,7 +121,7 @@ def main():
     pool = mp.Pool(2)
 
     # Prepare the arguments for parallel processing CHANGE NUMBER HERE
-    arguments = [(human_prompts, tokenizer, response_list) for _ in range(750)]
+    arguments = [(human_prompts, tokenizer, response_list) for _ in range(10)]
 
     # Apply parallel processing to process_data function
     result = pool.starmap(process_data, arguments)
