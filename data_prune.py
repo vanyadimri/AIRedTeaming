@@ -16,14 +16,11 @@ import time
 with open(file= "../key.txt") as f:
         openai.api_key = f.read()
 
-def process_data(human_prompts, tokenizer):
+def process_data(human_prompts, tokenizer, response_list):
     # make list of 5357 responses 
-    response_list = []
     response_pred, _ = call_request(random.sample(human_prompts, 1), model="davinci-instruct-beta", tokenizer=tokenizer, max_new_tokens=200)
     response_list.append(response_pred)
     return response_list
-
-# Only run this once to produce pruned_data.json file
 
 def elo_driver (responses, tokenizer):
     # Set the stability threshold for Elo rankings
@@ -118,23 +115,25 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.model_max_length = 2048
-    
-    # creates dictionary that allows you to set default values for keys that don't exist
-    # default value for each key is an empty list
-    score_results = defaultdict(list)
 
     # Create a pool of worker processes
+    response_list = []
     pool = mp.Pool(2)
 
     # Prepare the arguments for parallel processing CHANGE NUMBER HERE
-    arguments = [(human_prompts, tokenizer) for _ in range(750)]
+    arguments = [(human_prompts, tokenizer, response_list) for _ in range(750)]
 
     # Apply parallel processing to process_data function
-    response_list = pool.starmap(process_data, arguments)
+    result = pool.starmap(process_data, arguments)
 
     # Close the pool of worker processes
     pool.close()
     pool.join()
+
+    # should we aggregate it here like we did previously for score_result?
+    agg_resp_list = []
+    for resp in result:
+        agg_resp_list.append(resp)
 
     # call elo 
 
@@ -143,7 +142,7 @@ def main():
     # value is a list of 10 elo scores each representing how that response scores in each const
     # {"response", [0.1, 0.3, -0.5,..., 0.9, 0.6]}
     
-    responses = {string: [0.0] * 10 for string in response_list}
+    responses = {string: [0.0] * 10 for string in agg_resp_list}
     # pass list into elo_driver
     elo_driver(responses, tokenizer)
 
@@ -177,6 +176,11 @@ def main():
 
     # Now 'top_resp_indices' contains the indices of the top 536 keys for each index in the list of doubles
     
+    # creates dictionary that allows you to set default values for keys that don't exist
+    # default value for each key is an empty list
+    
+    score_results = defaultdict(list)
+
     # Iterate through the keys (0 to 9) in top_resp_indices
     for key, indices in top_resp_indices.items():
         # Extract the strings from human_prompts at the specified indices
@@ -198,7 +202,7 @@ def main():
 
     with open('pruned_data.json', 'w') as file:
         # Write the dictionary to the file in JSON format
-        json.dump(all_score_results, file)
+        json.dump(score_results, file)
 
 
 def call_request(prompt, model, tokenizer, max_new_tokens=15):
