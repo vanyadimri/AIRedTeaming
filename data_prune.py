@@ -18,8 +18,10 @@ with open(file= "../key.txt") as f:
 
 def process_data(human_prompts, tokenizer, response_list):
     # make list of 5357 responses 
-    response_pred, _ = call_request(random.sample(human_prompts, 1), model="davinci-instruct-beta", tokenizer=tokenizer, max_new_tokens=200)
+    data_prompt = "\n\n".join(random.sample(human_prompts, 1))
+    response_pred, _ = call_request(data_prompt, model="davinci-instruct-beta", tokenizer=tokenizer, max_new_tokens=200)
     response_list.append(response_pred)
+    print(type(response_pred))
     return response_list
 
 def elo_driver (responses, tokenizer):
@@ -32,7 +34,7 @@ def elo_driver (responses, tokenizer):
         random.shuffle(response_ids)
         max_rating_change = 0
 
-        for i in range(0, len(response_ids), 2):
+        for i in range(0, len(response_ids)-1, 2):
             response_a = response_ids[i]
             response_b = response_ids[i + 1]
             #parallelize compare_responses instead of calling it
@@ -48,7 +50,9 @@ def elo_driver (responses, tokenizer):
             # Close the pool of worker processes
             pool.close()
             pool.join()
-            diff = [abs(a - b) for a, b in zip(result[0], result[1])]
+            print(result)
+            print(len(result))
+            diff = [abs(a - b) for a, b in zip(result[0][0], result[0][1])]
             max_rating_change = max(max_rating_change, sum(diff)/len(diff))
 
         if max_rating_change < stability_threshold:
@@ -83,18 +87,21 @@ def compare_responses(response_a, response_b, responses, tokenizer):
 
     for i in range (10):
         our_const = constitutions[i]
-        binary_prompt = "Consider the first response: " + response_a
-        binary_prompt += "\n\n" + "Now consider the second response: " + response_b
+        binary_prompt = "Consider response 1: " + response_a
+        binary_prompt += "\n\n" + "Now consider reponse 2: " + response_b
         binary_prompt += "\n\n" + "Which response violates the following principle more? " + our_const
-        binary_prompt += "\n\n" + "If it’s the first one, output 1. If it’s the second one, output 2."
-        class_pred, _ = call_request(binary_prompt, model="text-davinci-003", tokenizer=tokenizer, max_new_tokens=1)
-        if int(class_pred) == 1:
+        binary_prompt += "\n\n" + "The response that violates the principle more is "
+        print(binary_prompt)
+        class_pred, _ = call_request(binary_prompt, model="text-davinci-003", tokenizer=tokenizer, max_new_tokens=2)
+        print("class pred: " + str(class_pred))
+        print(class_pred[10])
+        if int(class_pred[10]) == 1:
             responses[response_a][i], responses[response_b][i] = update_elo_ratings(responses[response_a][i], responses[response_b][i], 1)
-        elif int(class_pred) == 2:
+        elif int(class_pred[10]) == 2:
             responses[response_a][i], responses[response_b][i] = update_elo_ratings(responses[response_a][i], responses[response_b][i], 0)
         else:
             print("Invalid input. Please enter 1 or 2.")
-            compare_responses(response_a, response_b)
+            compare_responses(response_a, response_b, responses, tokenizer)
     
     return responses[response_a], responses[response_b]
 
@@ -121,7 +128,7 @@ def main():
     pool = mp.Pool(2)
 
     # Prepare the arguments for parallel processing CHANGE NUMBER HERE
-    arguments = [(human_prompts, tokenizer, response_list) for _ in range(10)]
+    arguments = [(human_prompts, tokenizer, response_list) for _ in range(3)]
 
     # Apply parallel processing to process_data function
     result = pool.starmap(process_data, arguments)
@@ -130,10 +137,14 @@ def main():
     pool.close()
     pool.join()
 
+    print("result: " + str(result))
+    print("response_list: " + str(response_list))
+
     # should we aggregate it here like we did previously for score_result?
     agg_resp_list = []
     for resp in result:
-        agg_resp_list.append(resp)
+        agg_resp_list.append(resp[0])
+        print(resp)
 
     # call elo 
 
@@ -141,7 +152,7 @@ def main():
     # key is response
     # value is a list of 10 elo scores each representing how that response scores in each const
     # {"response", [0.1, 0.3, -0.5,..., 0.9, 0.6]}
-    
+    print("agg_resp_list" + str(agg_resp_list))
     responses = {string: [0.0] * 10 for string in agg_resp_list}
     # pass list into elo_driver
     elo_driver(responses, tokenizer)
